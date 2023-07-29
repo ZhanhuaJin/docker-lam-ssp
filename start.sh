@@ -39,7 +39,8 @@ EOF
 LAM_SKIP_PRECONFIGURE="${LAM_SKIP_PRECONFIGURE:-false}"
 if [ "$LAM_SKIP_PRECONFIGURE" != "true" ]; then
   echo "Configuring LAM"
-
+#  echo $LDAP_USER
+#  echo $LDAP_USER_PASSWORD
   LAM_LANG="${LAM_LANG:-en_US}"
   export LAM_PASSWORD="${LAM_PASSWORD:-lam}"
   LAM_PASSWORD_SSHA=$(php -r '$password = getenv("LAM_PASSWORD"); $rand = abs(hexdec(bin2hex(openssl_random_pseudo_bytes(5)))); $salt0 = substr(pack("h*", md5($rand)), 0, 8); $salt = substr(pack("H*", sha1($salt0 . $password)), 0, 4); print "{SSHA}" . base64_encode(pack("H*", sha1($password . $salt))) . " " . base64_encode($salt) . "\n";')
@@ -49,6 +50,7 @@ if [ "$LAM_SKIP_PRECONFIGURE" != "true" ]; then
   LDAP_USERS_DN="${LDAP_USERS_DN:-${LDAP_BASE_DN}}"
   LDAP_GROUPS_DN="${LDAP_GROUPS_DN:-${LDAP_BASE_DN}}"
   LDAP_ADMIN_USER="${LDAP_USER:-cn=admin,${LDAP_BASE_DN}}"
+  LDAP_ADMIN_PASSWORD="${LDAP_USER_PASSWORD:-secret}"
   LAM_LICENSE="${LAM_LICENSE:-}"
   LAM_CONFIGURATION_DATABASE="${LAM_CONFIGURATION_DATABASE:-files}"
   LAM_CONFIGURATION_HOST="${LAM_CONFIGURATION_HOST:-}"
@@ -56,6 +58,9 @@ if [ "$LAM_SKIP_PRECONFIGURE" != "true" ]; then
   LAM_CONFIGURATION_DATABASE_NAME="${LAM_CONFIGURATION_DATABASE_NAME:-}"
   LAM_CONFIGURATION_USER="${LAM_CONFIGURATION_USER:-}"
   LAM_CONFIGURATION_PASSWORD="${LAM_CONFIGURATION_PASSWORD:-}"
+
+#  echo $LDAP_ADMIN_USER
+#  echo $LDAP_ADMIN_PASSWORD
 
   sed -i -f- /etc/ldap-account-manager/config.cfg <<- EOF
     s|^password:.*|password: ${LAM_PASSWORD_SSHA}|;
@@ -87,6 +92,15 @@ EOF
     s|^.*suffix_user:.*|types: suffix_user: ${LDAP_USERS_DN}|;
     s|^.*suffix_group:.*|types: suffix_group: ${LDAP_GROUPS_DN}|;
 EOF
+
+  sed -i -f- /usr/share/self-service-password/conf/config.inc.php <<- EOF
+    s|^\$ldap_url =.*|\$ldap_url = \"${LDAP_SERVER}\";|;
+    s|^\$ldap_binddn =.*|\$ldap_binddn = \"${LDAP_ADMIN_USER}\";|;
+    s|^\$ldap_bindpw =.*|\$ldap_bindpw = \"${LDAP_ADMIN_PASSWORD}\";|;
+    s|^\$ldap_base =.*|\$ldap_base = \"${LDAP_BASE_DN}\";|;
+    s|^\$keyphrase =.*|\$keyphrase = \"1234567890\";|;
+EOF
+  unset LDAP_ADMIN_PASSWORD
 
 fi
 

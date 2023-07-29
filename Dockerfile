@@ -27,9 +27,11 @@
 #
 
 FROM debian:bullseye-slim
-LABEL maintainer="Roland Gruber <post@rolandgruber.de>"
+LABEL maintainer="Zhanhua Jin <jinzhanhua@gmail.com>"
 
 ARG LAM_RELEASE=8.4
+ARG SSP_RELEASE=1.5.3
+
 EXPOSE 80
 
 ENV \
@@ -85,6 +87,7 @@ RUN apt-get install --no-install-recommends -y \
         wget \
         libldap-common \
         gettext \
+        smarty3 \
     && \
     rm /etc/apache2/sites-enabled/*default* && \
     rm -rf /var/cache/apt /var/lib/apt/lists/*
@@ -128,11 +131,62 @@ RUN a2enmod ssl
 
 # add redirect for /
 RUN a2enmod rewrite
-RUN echo "<VirtualHost *:80>" >> /etc/apache2/sites-available/lam.conf \
- && echo "RewriteEngine on" >> /etc/apache2/sites-available/lam.conf \
- && echo "RewriteRule   ^/$  /lam/ [R,L]" >> /etc/apache2/sites-available/lam.conf \
- && echo "</VirtualHost>" >> /etc/apache2/sites-available/lam.conf
-RUN ln -s /etc/apache2/sites-available/lam.conf /etc/apache2/sites-enabled/
+#RUN echo "<VirtualHost *:80>" >> /etc/apache2/sites-available/lam.conf \
+# && echo "RewriteEngine on" >> /etc/apache2/sites-available/lam.conf \
+# && echo "RewriteRule   ^/$  /lam/ [R,L]" >> /etc/apache2/sites-available/lam.conf \
+# && echo "</VirtualHost>" >> /etc/apache2/sites-available/lam.conf
+#RUN ln -s /etc/apache2/sites-available/lam.conf /etc/apache2/sites-enabled/
+
+# install SSP
+RUN wget https://ltb-project.org/archives/self-service-password_${SSP_RELEASE}-1_all.deb -O /tmp/self-service-password.deb && dpkg -i /tmp/self-service-password.deb && rm -f /tmp/self-service-password.deb
+
+# 
+#RUN echo "<VirtualHost *:80>" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "  Alias /ssp \"/usr/share/self-service-password\"" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "  <Directory /usr/share/self-service-password>" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "    DirectoryIndex index.php" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "    AddDefaultCharset UTF-8" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "    AllowOverride None" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "    <IfVersion >= 2.3>" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "      Require all granted" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "    </IfVersion>" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "    <IfVersion < 2.3>" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "      Order Deny,Allow" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "      Allow from all" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "    </IfVersion>" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "  </Directory>" >> /etc/apache2/sites-available/ssp.conf \
+# && echo "</VirtualHost>" >> /etc/apache2/sites-available/ssp.conf
+#RUN ln -s /etc/apache2/sites-available/ssp.conf /etc/apache2/sites-enabled/
+#RUN ln -s /etc/apache2/sites-available/self-service-password.conf /etc/apache2/sites-enabled/
+RUN echo "Alias /ssp /usr/share/self-service-password/htdocs" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "<Directory /usr/share/self-service-password/htdocs>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  DirectoryIndex index.php" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  AddDefaultCharset UTF-8" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  AllowOverride None" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  <IfVersion >= 2.3>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "    Require all granted" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  </IfVersion>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  <IfVersion < 2.3>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "    Order Deny,Allow" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "    Allow from all" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  </IfVersion>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "</Directory>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "Alias /rest /usr/share/self-service-password/rest" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "<Directory /usr/share/self-service-password/rest>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  DirectoryIndex index.php" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  AddDefaultCharset UTF-8" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  AllowOverride None" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  <IfVersion >= 2.3>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "    Require all denied" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  </IfVersion>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  <IfVersion < 2.3>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "    Order Deny,Allow" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "    Allow from all" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "  </IfVersion>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "</Directory>" >> /etc/apache2/conf-available/ssp.conf \
+ && echo "" >> /etc/apache2/conf-available/ssp.conf
+RUN ln -s /etc/apache2/conf-available/ssp.conf /etc/apache2/conf-enabled/
+
 
 COPY start.sh /usr/local/bin/start.sh
 
