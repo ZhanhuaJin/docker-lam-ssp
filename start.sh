@@ -44,6 +44,7 @@ if [ "$LAM_SKIP_PRECONFIGURE" != "true" ]; then
   LAM_LANG="${LAM_LANG:-en_US}"
   export LAM_PASSWORD="${LAM_PASSWORD:-lam}"
   LAM_PASSWORD_SSHA=$(php -r '$password = getenv("LAM_PASSWORD"); $rand = abs(hexdec(bin2hex(openssl_random_pseudo_bytes(5)))); $salt0 = substr(pack("h*", md5($rand)), 0, 8); $salt = substr(pack("H*", sha1($salt0 . $password)), 0, 4); print "{SSHA}" . base64_encode(pack("H*", sha1($password . $salt))) . " " . base64_encode($salt) . "\n";')
+  LDAP_HOSTNAME="${LDAP_HOSTNAME:-my-domain.com}"
   LDAP_SERVER="${LDAP_SERVER:-ldap://ldap:389}"
   LDAP_DOMAIN="${LDAP_DOMAIN:-my-domain.com}"
   LDAP_BASE_DN="${LDAP_BASE_DN:-dc=${LDAP_DOMAIN//\./,dc=}}"
@@ -63,6 +64,7 @@ if [ "$LAM_SKIP_PRECONFIGURE" != "true" ]; then
 #  echo $LDAP_ADMIN_PASSWORD
 
   sed -i -f- /etc/ldap-account-manager/config.cfg <<- EOF
+    s|^default:.*|default: ${LDAP_HOSTNAME}|;
     s|^password:.*|password: ${LAM_PASSWORD_SSHA}|;
     s|^license:.*|license: ${LAM_LICENSE}|;
     s|^configDatabaseType:.*|configDatabaseType: ${LAM_CONFIGURATION_DATABASE}|;
@@ -74,16 +76,17 @@ if [ "$LAM_SKIP_PRECONFIGURE" != "true" ]; then
 EOF
   unset LAM_PASSWORD
 
+  rm /var/lib/ldap-account-manager/config/lam.conf
   set +e
-  ls -l /var/lib/ldap-account-manager/config/lam.conf
+  ls -l /var/lib/ldap-account-manager/config/${LDAP_HOSTNAME}.conf
   cfgFilesExist=$?
   set -e
   if [ $cfgFilesExist -ne 0 ]; then
-    cp /var/lib/ldap-account-manager/config/unix.sample.conf /var/lib/ldap-account-manager/config/lam.conf
-	  chown www-data /var/lib/ldap-account-manager/config/lam.conf
+    cp /var/lib/ldap-account-manager/config/unix.sample.conf /var/lib/ldap-account-manager/config/${LDAP_HOSTNAME}.conf
+	  chown www-data /var/lib/ldap-account-manager/config/${LDAP_HOSTNAME}.conf
   fi
 
-  sed -i -f- /var/lib/ldap-account-manager/config/lam.conf <<- EOF
+  sed -i -f- /var/lib/ldap-account-manager/config/${LDAP_HOSTNAME}.conf <<- EOF
     s|^ServerURL:.*|ServerURL: ${LDAP_SERVER}|;
     s|^Admins:.*|Admins: ${LDAP_ADMIN_USER}|;
     s|^Passwd:.*|Passwd: ${LAM_PASSWORD_SSHA}|;
