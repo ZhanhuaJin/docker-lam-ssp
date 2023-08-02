@@ -33,6 +33,7 @@ ARG LAM_RELEASE=8.4
 ARG SSP_RELEASE=1.5.3
 
 EXPOSE 80
+EXPOSE 443
 
 ENV \
     DEBIAN_FRONTEND=noninteractive \
@@ -127,8 +128,6 @@ RUN sed -e 's,^ErrorLog.*,ErrorLog "|/bin/cat",' -i /etc/apache2/apache2.conf
 # because there is no logging set in the lam vhost logging goes to other_vhost_access.log
 RUN ln -sf /dev/stdout /var/log/apache2/other_vhosts_access.log
 
-RUN a2enmod ssl
-
 # add redirect for /
 RUN a2enmod rewrite
 #RUN echo "<VirtualHost *:80>" >> /etc/apache2/sites-available/lam.conf \
@@ -136,6 +135,24 @@ RUN a2enmod rewrite
 # && echo "RewriteRule   ^/$  /lam/ [R,L]" >> /etc/apache2/sites-available/lam.conf \
 # && echo "</VirtualHost>" >> /etc/apache2/sites-available/lam.conf
 #RUN ln -s /etc/apache2/sites-available/lam.conf /etc/apache2/sites-enabled/
+
+# Add ssl
+RUN sed -e 's,^\s*SSLCertificateFile.*,SSLCertificateFile /etc/ssl/private/server.crt,' -i /etc/apache2/sites-available/default-ssl.conf
+RUN sed -e 's,^\s*SSLCertificateKeyFile.*,SSLCertificateKeyFile /etc/ssl/private/server.key,' -i /etc/apache2/sites-available/default-ssl.conf
+
+RUN echo "SSLCipherSuite EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH" >>  /etc/apache2/conf-available/ssl-params.conf \
+ && echo "SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1" >>  /etc/apache2/conf-available/ssl-params.conf \
+ && echo "SSLHonorCipherOrder On" >>  /etc/apache2/conf-available/ssl-params.conf \
+ && echo "Header always set X-Frame-Options DENY" >>  /etc/apache2/conf-available/ssl-params.conf \
+ && echo "Header always set X-Content-Type-Options nosniff" >>  /etc/apache2/conf-available/ssl-params.conf \
+ && echo "SSLCompression off" >>  /etc/apache2/conf-available/ssl-params.conf \
+ && echo "SSLUseStapling on" >>  /etc/apache2/conf-available/ssl-params.conf \
+ && echo "SSLStaplingCache \"shmcb:logs/stapling-cache(150000)\"" >>  /etc/apache2/conf-available/ssl-params.conf \
+ && echo "SSLSessionTickets Off" >>  /etc/apache2/conf-available/ssl-params.conf 
+
+RUN a2enmod ssl
+
+RUN a2ensite default-ssl
 
 # install SSP
 RUN wget https://ltb-project.org/archives/self-service-password_${SSP_RELEASE}-1_all.deb -O /tmp/self-service-password.deb && dpkg -i /tmp/self-service-password.deb && rm -f /tmp/self-service-password.deb
@@ -187,6 +204,8 @@ RUN echo "Alias /ssp /usr/share/self-service-password/htdocs" >> /etc/apache2/co
  && echo "" >> /etc/apache2/conf-available/ssp.conf
 RUN ln -s /etc/apache2/conf-available/ssp.conf /etc/apache2/conf-enabled/
 
+# SSL
+VOLUME /etc/ssl/private
 
 COPY start.sh /usr/local/bin/start.sh
 

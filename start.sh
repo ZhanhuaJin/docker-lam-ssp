@@ -76,7 +76,7 @@ if [ "$LAM_SKIP_PRECONFIGURE" != "true" ]; then
 EOF
   unset LAM_PASSWORD
 
-  rm /var/lib/ldap-account-manager/config/lam.conf
+  rm -rf /var/lib/ldap-account-manager/config/lam.conf
   set +e
   ls -l /var/lib/ldap-account-manager/config/${LDAP_HOSTNAME}.conf
   cfgFilesExist=$?
@@ -93,6 +93,7 @@ EOF
     s|^tools: treeViewSuffix:.*|tools: treeViewSuffix: ${LDAP_BASE_DN}|;
     s|^defaultLanguage:.*|defaultLanguage: ${LAM_LANG}.utf8|;
     s|^.*suffix_user:.*|types: suffix_user: ${LDAP_USERS_DN}|;
+    s|^.*modules_user:.*|types: modules_user: inetOrgPerson,posixAccount,shadowAccount|;
     s|^.*suffix_group:.*|types: suffix_group: ${LDAP_GROUPS_DN}|;
 EOF
 
